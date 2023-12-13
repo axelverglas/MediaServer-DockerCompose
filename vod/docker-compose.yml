@@ -17,6 +17,7 @@ services:
       - TZ=${TZ}
     networks:
       - vpn-network
+      - proxy
     dns:
       - 84.200.69.80
       - 8.8.8.8
@@ -28,8 +29,26 @@ services:
       - 7878:7878 # WebUI radarr
       - 8989:8989 # WebUI sonarr
       - 5055:5055 # WebUI overseer
-      - 8080:8080 # WebUI rutorrent
-      - 32400:32400 #Plex
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.radarr-rtr.rule=Host(`radarr.avserver.ovh`)"
+      - "traefik.http.routers.radarr-rtr.entrypoints=websecure"
+      - "traefik.http.routers.radarr-rtr.tls.certresolver=myresolver"
+      - "traefik.http.routers.radarr-rtr.tls=true"
+      - "traefik.http.routers.radarr-rtr.service=radarr-svc"
+      - "traefik.http.services.radarr-svc.loadbalancer.server.port=7878"
+      - "traefik.http.routers.overseerr-rtr.rule=Host(`overseerr.avserver.ovh`)"
+      - "traefik.http.routers.overseerr-rtr.entrypoints=websecure"
+      - "traefik.http.routers.overseerr-rtr.tls.certresolver=myresolver"
+      - "traefik.http.routers.overseerr-rtr.tls=true"
+      - "traefik.http.routers.overseerr-rtr.service=overseerr-svc"
+      - "traefik.http.services.overseerr-svc.loadbalancer.server.port=5055"
+      - "traefik.http.routers.sonarr-rtr.rule=Host(`sonarr.avserver.ovh`)"
+      - "traefik.http.routers.sonarr-rtr.entrypoints=websecure"
+      - "traefik.http.routers.sonarr-rtr.tls.certresolver=myresolver"
+      - "traefik.http.routers.sonarr-rtr.tls=true"
+      - "traefik.http.routers.sonarr-rtr.service=sonarr-svc"
+      - "traefik.http.services.sonarr-svc.loadbalancer.server.port=8989"
     devices:
       - /dev/net/tun:/dev/net/tun
     volumes:
@@ -44,6 +63,9 @@ services:
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent
     container_name: qbittorrent
+    labels:
+      - autoheal=true
+      - com.centurylinklabs.watchtower.enable=true
     depends_on:
       - vpn
     network_mode: "service:vpn"
@@ -69,7 +91,7 @@ services:
       - TZ=${TZ}
     volumes:
       - ${RACINE}/sonarr/config:/config
-      - ${RACINE}/downloads/series:/downloads
+      - ${RACINE}/medias/series:/medias/series
     restart: unless-stopped
 
   radarr:
@@ -84,7 +106,8 @@ services:
       - TZ=${TZ}
     volumes:
       - ${RACINE}/radarr/config:/config
-      - ${RACINE}/downloads/films:/downloads
+      - ${RACINE}/medias/films:/medias/films
+      - ${RACINE}/downloads:/downloads
     restart: unless-stopped
 
   jackett:
@@ -126,25 +149,10 @@ services:
       - LOG_LEVEL=info
     restart: unless-stopped
 
-  plex:
-    image: lscr.io/linuxserver/plex:latest
-    container_name: plex
-    depends_on:
-      - vpn
-    network_mode: "service:vpn"
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - VERSION=docker
-      - PLEX_CLAIM=${PLEX_CLAIM}
-    volumes:
-      - ${RACINE}/plex/library:/config
-      - ${RACINE}/downloads/films:/films
-      - ${RACINE}/downloads/series:/series
-    restart: unless-stopped
-
 networks:
   vpn-network:
     external:
       name: vpn-network
+  proxy:
+    external:
+      name: proxy

@@ -1,0 +1,33 @@
+version: "2.1"
+services:
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - VERSION=docker
+      - PLEX_CLAIM=${PLEX_CLAIM}
+    ports:
+      - 32400:32400
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.plex-rtr.rule=Host(`plex.avserver.ovh`)"
+      - "traefik.http.routers.plex-rtr.entrypoints=websecure"
+      - "traefik.http.routers.plex-rtr.tls.certresolver=myresolver"
+      - "traefik.http.routers.plex-rtr.tls=true"
+      - "traefik.http.routers.plex-rtr.service=plex-svc"
+      - "traefik.http.services.plex-svc.loadbalancer.server.port=32400"
+    volumes:
+      - ${RACINE}/plex/library:/config
+      - ${RACINE}/medias/films:/films
+      - ${RACINE}/medias/series:/series
+    restart: unless-stopped
+
+networks:
+  proxy:
+    external:
+      name: proxy

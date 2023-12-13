@@ -1,0 +1,28 @@
+version: "3.7"
+
+services:
+  traefik:
+    image: traefik:v2.2.0
+    container_name: traefik
+    hostname: traefik
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /srv/docker/traefik/traefik.yml:/etc/traefik/traefik.yml
+      - /srv/docker/traefik/acme.json:/acme.json
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-api.rule=Host(`traefik.avserver.ovh`)"
+      - "traefik.http.routers.traefik-api.service=api@internal"
+      - "traefik.http.routers.traefik-api.entrypoints=websecure"
+      - "traefik.http.routers.traefik-api.tls.certresolver=myresolver"
+    restart: "unless-stopped"
+
+networks:
+  proxy:
+    external:
+      name: proxy
